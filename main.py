@@ -1,13 +1,27 @@
-import discord
 import os
 import json
 import requests
 from replit import db
+import discord
+from discord.ext import commands
 from jinda import keep_alive
 
 key_weather = os.getenv('key_weather')
-key_google = os.getenv('google_api_key')
+key_google = 'cc63cf735bmsh065960a0e61f969p194549jsnf7ed81d30f11'
 
+def add_gaali(gaali):
+    if "gaalis" in db.keys():
+        gaalis = db["gaalis"]
+        gaalis.append(gaali)
+        db["gaalis"] = gaalis
+    else:
+        db["gaalis"] = [gaali]
+
+def delete_gaali(index):
+    gaalis = db["gaalis"]
+    if len(gaalis) > index:
+        del gaalis[index]
+        db["gaalis"] = gaalis
 
 def lets_inspire():
     response = requests.get("https://zenquotes.io/api/random")
@@ -15,30 +29,18 @@ def lets_inspire():
     quote = json_data[0]['q'] + " -" + json_data[0]['a']
     return (quote)
 
+intents = discord.Intents.default()
+intents.message_content = True
 
 def find(str):
-    url = "https://community-open-weather-map.p.rapidapi.com/weather"
-
-    querystring = {
-        "q": str,
-        "lat": "0",
-        "lon": "0",
-        "callback": "",
-        "id": "",
-        "lang": "null",
-        "units": "metric",
-        "mode": ""
-    }
+    url = "https://open-weather13.p.rapidapi.com/city/" + str
 
     headers = {
-        'x-rapidapi-host': "community-open-weather-map.p.rapidapi.com",
-        'x-rapidapi-key': key_weather
+	     "X-RapidAPI-Key": "cc63cf735bmsh065960a0e61f969p194549jsnf7ed81d30f11",
+	     "X-RapidAPI-Host": "open-weather13.p.rapidapi.com"
     }
 
-    response = requests.request("GET",
-                                url,
-                                headers=headers,
-                                params=querystring)
+    response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return "false"
     data = response.json()
@@ -51,72 +53,50 @@ def find(str):
     ans = [temp, humidity, pressure, report[0]['description']]
     return ans
 
-
-def add_gaali(gaali):
-    if "gaalis" in db.keys():
-        gaalis = db["gaalis"]
-        gaalis.append(gaali)
-        db["gaalis"] = gaalis
-
-    else:
-        db["gaalis"] = [gaali]
-
-
-def delete_gaali(index):
-    gaalis = db["gaalis"]
-    if len(gaalis) > index:
-        del gaalis[index]
-        db["gaalis"] = gaalis
-
-
 def search(str):
     query = str
-    url = "https://google-search3.p.rapidapi.com/api/v1/search/q=" + query
+    url = "https://google-search72.p.rapidapi.com/search?q=" + query
 
     headers = {
-        'x-user-agent': "desktop",
-        'x-proxy-location': "US",
-        'x-rapidapi-host': "google-search3.p.rapidapi.com",
-        'x-rapidapi-key': key_google
+	     "X-RapidAPI-Key": "cc63cf735bmsh065960a0e61f969p194549jsnf7ed81d30f11",
+	     "X-RapidAPI-Host": "google-search72.p.rapidapi.com"
     }
 
-    response = requests.request("GET", url, headers=headers)
+    response = requests.get(url, headers=headers)
     data = response.json()
-    results = data['results']
-    title = results[0]['title']
-    description = results[0]['description']
-    link = results[0]['link']
+    print(data)
+    results = data['items']
+    title = results[1]['title']
+    description = results[1]['snippet']
+    link = results[1]['link']
     ans = [title, description, link]
     return ans
 
-
-bad_words = ["land", "loda", "bsdk", "bkl", "bc", "bisi", "fuck", "chutiya"]
-
-client = discord.Client()
+bot = commands.Bot(command_prefix='&', intents=intents)
 
 
-@client.event
+@bot.event
 async def on_ready():
     print("ab se koi gaali nhi dega")
 
 
-@client.event
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    print(message.content)
+    if message.author == bot.user:
         return
 
     if message.content.startswith("&inspire"):
         quote = lets_inspire()
         await message.channel.send(quote)
-        await message.channel.send(
-            "||inspire ho ke bhi insta chalane ka kya laabh parth||")
+        await message.channel.send("||inspire ho ke bhi discord chalane ka kya laabh parth||")
 
-    if "gaalis" in db.keys():
-        options = db["gaalis"]
-        if any(word in message.content for word in options):
-            await message.channel.send("> gaali deta h madarjaat")
+    # if "gaalis" in db.keys():
+    #     options = db["gaalis"]
+    #     if any(word in message.content for word in options):
+    #         await message.channel.send("> gaali deta h madarjaat")
 
-    if any(word in message.content for word in bad_words):
+    if any(word in message.content for word in db["gaalis"]):
         await message.channel.send("> gaali deta h madarjaat")
 
     if message.content.startswith("&add"):
@@ -157,24 +137,19 @@ async def on_message(message):
         await message.channel.send(msg[2])
 
     if message.content.startswith("&help"):
-        await message.channel.send(
-            "> To google search something use `&search query`")
-        await message.channel.send(
-            "> To get the weather of a location `&weather location`")
-        await message.channel.send(
-            "> To get inspirational quotes use `&inspire`")
-        await message.channel.send(
-            "> To add any bad word in directory`&add bad_word`")
+        await message.channel.send("> To google search something use `&search query`")
+        await message.channel.send("> To get the weather of a location `&weather location`")
+        await message.channel.send("> To get inspirational quotes use `&inspire`")
+        await message.channel.send("> To add any bad word in directory`&add bad_word`")
         await message.channel.send("> To see the bad word directory `&list`")
-        await message.channel.send(
-            "> To delete a bad word `&delete index_of_word`")
+        await message.channel.send("> To delete a bad word `&delete index_of_word`")
+
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send('Pong!')
 
 
 keep_alive()
 my_secret = os.environ['key']
-client.run(my_secret)
-
-# we can implement something to stop spamming in discord channels
-# to do so we have to keep count of the same message in some 
-# interval of time and check if it crosses the limit.
-# if it does so then we will ask the admin to weather keep it or # delete it from all channels.
+bot.run(my_secret)
